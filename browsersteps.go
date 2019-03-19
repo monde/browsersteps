@@ -31,46 +31,6 @@ func (b *BrowserSteps) SetBaseURL(url *url.URL) error {
 	return nil
 }
 
-func (b *BrowserSteps) iWriteTo(text, selector, by string) error {
-	// Click the element
-	element, err := b.GetWebDriver().FindElement(by, selector)
-	if err != nil {
-		return err
-	}
-
-	err = element.Clear()
-	if err != nil {
-		return err
-	}
-	return element.SendKeys(text)
-}
-
-func (b *BrowserSteps) iClick(selector, by string) error {
-	// Submit the element
-	element, err := b.GetWebDriver().FindElement(by, selector)
-	if err != nil {
-		return err
-	}
-	return element.Click()
-}
-
-func (b *BrowserSteps) iSubmit(selector, by string) error {
-	// Submit the element
-	element, err := b.GetWebDriver().FindElement(by, selector)
-	if err != nil {
-		return err
-	}
-	return element.Submit()
-}
-
-func (b *BrowserSteps) iMoveTo(selector, by string) error {
-	element, err := b.GetWebDriver().FindElement(by, selector)
-	if err != nil {
-		return err
-	}
-	return element.MoveTo(0, 0)
-}
-
 //BeforeScenario is executed before each scenario
 func (b *BrowserSteps) BeforeScenario(a interface{}) {
 	var err error
@@ -99,25 +59,9 @@ func (b *BrowserSteps) AfterScenario(a interface{}, err error) {
 	b.GetWebDriver().Quit()
 }
 
-func (b *BrowserSteps) buildSteps(s *godog.Suite) {
-	b.buildNavigationSteps(s)
-	b.buildAssertionSteps(s)
-	b.buildProcessSteps(s)
-
-	s.Step(`^I am a anonymous user$`, func() error { return b.GetWebDriver().DeleteAllCookies() })
-
-	s.Step(`^I write "([^"]*)" to "([^"]*)" `+ByOption+`$`, b.iWriteTo)
-	s.Step(`^I click "([^"]*)" `+ByOption+`$`, b.iClick)
-	s.Step(`^I submit "([^"]*)" `+ByOption+`$`, b.iSubmit)
-
-	s.Step(`^I move to "([^"]*)" `+ByOption+`$`, b.iMoveTo)
-
-}
-
 //NewBrowserSteps starts a new BrowserSteps instance.
 func NewBrowserSteps(s *godog.Suite, cap selenium.Capabilities, defaultURL string) *BrowserSteps {
 	bs := &BrowserSteps{Capabilities: cap, DefaultURL: defaultURL, ScreenshotPath: os.Getenv("SCREENSHOT_PATH")}
-	bs.buildSteps(s)
 
 	s.BeforeScenario(bs.BeforeScenario)
 	s.AfterScenario(bs.AfterScenario)

@@ -27,4 +27,4 @@
 
 [[constraint]]
   name = "github.com/tebeka/selenium"
-  version = "0.9.3"
+  branch = "master"
