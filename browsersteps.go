@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/DATA-DOG/godog"
 	"github.com/tebeka/selenium"
@@ -43,7 +44,7 @@ func (b *BrowserSteps) BeforeScenario(a interface{}) {
 //AfterScenario is executed after each scenario
 func (b *BrowserSteps) AfterScenario(a interface{}, err error) {
 	if err != nil && b.ScreenshotPath != "" {
-		filename := fmt.Sprintf("FAILED STEP - %s.png", err.Error())
+		filename := fmt.Sprintf("FAILED STEP - %d.png", time.Now().Unix())
 
 		buff, err := b.GetWebDriver().Screenshot()
 		if err != nil {
