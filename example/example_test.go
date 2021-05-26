@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DATA-DOG/godog"
+	"github.com/cucumber/godog"
 	"github.com/tebeka/selenium"
 
-	"github.com/llonchj/browsersteps"
+	"github.com/monde/browsersteps"
 )
 
 func iWaitFor(amount int, unit string) error {

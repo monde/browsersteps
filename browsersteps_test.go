@@ -2,7 +2,6 @@ package browsersteps
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -14,19 +13,81 @@ import (
 	"net/http/httptest"
 	"net/url"
 
-	"github.com/DATA-DOG/godog"
+	"github.com/cucumber/godog"
+	"github.com/cucumber/godog/colors"
+	"github.com/cucumber/messages-go/v10"
 	"github.com/tebeka/selenium"
 )
 
-func iWaitFor(amount int, unit string) error {
-	u := time.Second
-	fmt.Printf("Waiting for %d %s", amount, unit)
+type TestHarness struct {
+	bs *BrowserSteps
+}
+
+var opts = godog.Options{
+	Output: colors.Colored(os.Stdout),
+	Format: "pretty", // "cucumber", "events", "junit", "pretty", "progress"
+	Strict: true,
+	Paths:  []string{"features"},
+	//ShowStepDefinitions: true,
+}
+
+func init() {
+	godog.BindCommandLineFlags("godog.", &opts) // godog v0.11.0 (latest)
+}
+
+func TestMain(m *testing.M) {
+	th := &TestHarness{}
+	status := godog.TestSuite{
+		Name:                 "browsersteps",
+		TestSuiteInitializer: th.InitializeTestSuite,
+		ScenarioInitializer:  th.InitializeScenario,
+		Options:              &opts,
+	}.Run()
+
+	os.Exit(status)
+}
+
+func (th *TestHarness) iShouldSeeInLinkText(text string) error {
+	elem, err := th.bs.wd.FindElement(selenium.ByLinkText, text)
+	if err != nil {
+		return err
+	}
+	err = elem.Click()
+
+	return nil
+}
+
+func (th *TestHarness) iWaitFor(amount int, unit string) error {
+	var u time.Duration
+	switch unit {
+	case "millisecond":
+		u = time.Millisecond
+	case "milliseconds":
+		u = time.Millisecond
+	case "second":
+		u = time.Second
+	case "seconds":
+		u = time.Second
+	default:
+		u = time.Second
+	}
 	time.Sleep(u * time.Duration(amount))
 	return nil
 }
 
-func FeatureContext(s *godog.Suite) {
-	s.Step(`^I wait for (\d+) (milliseconds|millisecond|seconds|second)$`, iWaitFor)
+func (th *TestHarness) iOpenTheTestServerInABrowser() error {
+	return th.bs.GetWebDriver().Get(th.bs.URL.String())
+}
+
+func (th *TestHarness) InitializeTestSuite(ctx *godog.TestSuiteContext) {
+	ctx.BeforeSuite(func() {})
+	ctx.AfterSuite(func() {})
+}
+
+func (th *TestHarness) InitializeScenario(ctx *godog.ScenarioContext) {
+	ctx.Step(`^I open the test server in a browser$`, th.iOpenTheTestServerInABrowser)
+	ctx.Step(`^I should see the "([^"]*)" link text$`, th.iShouldSeeInLinkText)
+	ctx.Step(`^I wait for (\d+) (milliseconds|millisecond|seconds|second)$`, th.iWaitFor)
 
 	debug := os.Getenv("DEBUG")
 	if debug != "" {
@@ -45,18 +106,18 @@ func FeatureContext(s *godog.Suite) {
 		}
 	}
 
-	bs := NewBrowserSteps(s, capabilities, os.Getenv("SELENIUM_URL"))
+	bs := NewBrowserSteps(ctx, capabilities, os.Getenv("SELENIUM_URL"))
+	if th.bs == nil {
+		th.bs = bs
+	}
 
 	var server *httptest.Server
-	s.BeforeSuite(func() {
-		server = httptest.NewUnstartedServer(http.FileServer(http.Dir("./public")))
-		listenAddress := os.Getenv("SERVER_LISTEN")
-		if listenAddress != "" {
-			var err error
-			server.Listener, err = net.Listen("tcp4", listenAddress)
-			if err != nil {
-				log.Fatal(err)
-			}
+	ctx.BeforeScenario(func(sc *messages.Pickle) {
+		server = httptest.NewUnstartedServer(http.FileServer(http.Dir(".")))
+		var err error
+		server.Listener, err = net.Listen("tcp4", "127.0.0.1:")
+		if err != nil {
+			log.Fatal(err)
 		}
 		server.Start()
 		u, err := url.Parse(server.URL)
@@ -66,15 +127,10 @@ func FeatureContext(s *godog.Suite) {
 		bs.SetBaseURL(u)
 	})
 
-	s.AfterSuite(func() {
+	ctx.AfterScenario(func(sc *messages.Pickle, err error) {
 		if server != nil {
 			server.Close()
 			server = nil
 		}
 	})
-}
-
-func TestMain(m *testing.M) {
-	status := godog.Run("browsersteps", FeatureContext)
-	os.Exit(status)
 }
